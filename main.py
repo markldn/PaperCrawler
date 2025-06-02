@@ -9,6 +9,8 @@ from datetime import datetime
 import re
 import argparse
 from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.service import Service
 
 def mkdir(path):
     # Create a directory if it doesn't exist
@@ -60,7 +62,8 @@ def fetch_arxiv_papers(queries, start_year_month, end_year_month=None, num_paper
     chrome_options.add_argument("--disable-usb-log-level")  # disable logging
     chrome_options.add_argument("--log-level=3")  # set log level
 
-    driver = webdriver.Chrome(options=chrome_options)
+    service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service, options=chrome_options)
     driver.get(search_url)
     
     # Wait for the page to fully load
