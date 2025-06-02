@@ -54,7 +54,9 @@ def fetch_arxiv_papers(queries, start_year_month, end_year_month=None, num_paper
     if not end_year_month:
         end_year_month = datetime.now().strftime("%Y%m")
     # Generate the search URL by joining multiple keywords
-    query_string = '+'.join(queries)
+    # Enclose each query term in double quotes for exact phrase matching
+    quoted_queries = [f'"{q}"' for q in queries]
+    query_string = '+AND+'.join(quoted_queries)
     search_url = f"https://arxiv.org/search/?query={query_string}&searchtype=all&abstracts=show&order=-announced_date_first&size=200"
     # Use a Chrome driver to open the web page
     chrome_options = Options()
@@ -75,6 +77,9 @@ def fetch_arxiv_papers(queries, start_year_month, end_year_month=None, num_paper
     entries = soup.find_all('li', class_='arxiv-result')
     
     for entry in entries:
+        if len(papers) >= num_papers:
+            break
+
         title = entry.find('p', class_='title').text.strip()
         if title in downloaded_titles:
             continue
@@ -99,8 +104,6 @@ def fetch_arxiv_papers(queries, start_year_month, end_year_month=None, num_paper
                 "PDF Link": pdf_link,
                 "Journal": "arXiv"
             })
-            if len(papers) >= num_papers:
-                break
     
     # Close the browser after fetching the papers
     driver.quit()
@@ -148,11 +151,19 @@ def main(queries, start_year_month, end_year_month, num_papers):
     print("-"*25 + ' Done ' + "-"*25)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Download papers from arXiv.')
-    parser.add_argument('--queries', nargs='+', default=Config.DEFAULT_QUERIES, help='Keywords to search for papers')
-    parser.add_argument('--start_year_month', default=Config.DEFAULT_START_YEAR_MONTH, help='Start year and month in YYYYMM format')
-    parser.add_argument('--end_year_month', default=Config.DEFAULT_END_YEAR_MONTH, help='End year and month in YYYYMM format')
-    parser.add_argument('--num_papers', type=int, default=Config.DEFAULT_NUM_PAPERS, help='Number of papers to download')
+    queries_input = input(f"Enter keywords to search for papers (comma-separated, e.g., {Config.DEFAULT_QUERIES}): ")
+    # Split by comma, strip whitespace, and remove leading/trailing quotes
+    queries = [q.strip().strip("'").strip('"') for q in queries_input.split(',')] if queries_input else Config.DEFAULT_QUERIES
 
-    args = parser.parse_args()
-    main(args.queries, args.start_year_month, args.end_year_month, args.num_papers)
+    start_year_month = input(f"Enter start year and month in YYYYMM format (default: {Config.DEFAULT_START_YEAR_MONTH}): ") or Config.DEFAULT_START_YEAR_MONTH
+    end_year_month = input(f"Enter end year and month in YYYYMM format (default: {Config.DEFAULT_END_YEAR_MONTH}): ") or Config.DEFAULT_END_YEAR_MONTH
+    
+    while True:
+        num_papers_input = input(f"Enter number of papers to download (default: {Config.DEFAULT_NUM_PAPERS}): ") or str(Config.DEFAULT_NUM_PAPERS)
+        try:
+            num_papers = int(num_papers_input)
+            break
+        except ValueError:
+            print("Invalid input. Please enter a number for the number of papers.")
+
+    main(queries, start_year_month, end_year_month, num_papers)
